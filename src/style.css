@@ -38,3 +38,7 @@
 .update-available:hover{background:#3b6097}
 @media(max-width:780px){.update-status{display:none}}
 @media(max-width:500px){.update-available{font-size:11px;padding:7px}}
+
+/* Alfa 0.4: la vista ampliada puede desplazarse sin recortar la imagen. */
+.zoom-mode .image-stage{max-width:none;align-self:flex-start}
+.zoom-mode .canvas-area{overflow:auto}
