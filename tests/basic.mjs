@@ -48,3 +48,12 @@ assert.ok(serviceSource.includes("client.predict('/generate_request'"));
 assert.doesNotMatch(serviceSource,/values\.length\s*<\s*4/,'Qwen gr.State no aparece como cuarta salida pública');
 assert.doesNotMatch(serviceSource,/\brequest_state:\s*requestState\b/,'El estado no debe inyectarse manualmente en la llamada pública');
 console.log('Qwen: Gradio State vinculado a la sesión del cliente: OK');
+
+
+import {parseFiboImageData,selectionToBinaryMask} from '../src/fibo-contract.ts';
+const pngPayload='data:image/png;base64,aGVsbG8=';
+assert.equal(parseFiboImageData({data:[{image_data:pngPayload,seed:8}]}),pngPayload);
+assert.throws(()=>parseFiboImageData({data:[{url:'https://untrusted.example.com/image.png'}]}),/PNG esperado/);
+assert.throws(()=>parseFiboImageData({data:[{image_data:'javascript:bad'}]}),/PNG esperado/);
+assert.deepEqual([...selectionToBinaryMask(new Uint8ClampedArray([102,144,255,0,102,144,255,240]))],[0,0,0,255,255,255,255]);
+console.log('FIBO: seguridad PNG y máscara nativa de selección: OK');
