@@ -4,36 +4,67 @@
 export type AiScale = 2 | 4;
 export type AiProgress = (percent: number) => void;
 
+// La instancia se reutiliza entre muestras para evitar recargar los pesos y
+// recompilar las mismas operaciones en cada clic. Una sola escala permanece
+// en memoria: cuando cambia 2× ↔ 4×, se libera la instancia anterior.
+async function createUpscaler(scale:AiScale) {
+  await import('@tensorflow/tfjs');
+  const [{ default: Upscaler }, modelModule] = await Promise.all([
+    import('upscaler'),
+    scale === 2 ? import('@upscalerjs/esrgan-slim/2x') : import('@upscalerjs/esrgan-slim/4x')
+  ]);
+  return new Upscaler({ model: modelModule.default });
+}
+type UpscalerInstance = Awaited<ReturnType<typeof createUpscaler>>;
+let cached: {scale:AiScale; upscaler:UpscalerInstance} | null = null;
+let loading: {scale:AiScale; promise:ReturnType<typeof createUpscaler>} | null = null;
+
+async function getUpscaler(scale:AiScale):Promise<UpscalerInstance> {
+  if(cached?.scale===scale) return cached.upscaler;
+  if(loading?.scale===scale) return loading.promise;
+  const pending=createUpscaler(scale);
+  loading={scale,promise:pending};
+  try {
+    const upscaler=await pending;
+    if(loading?.promise===pending) {
+      cached?.upscaler.dispose();
+      cached={scale,upscaler};
+      loading=null;
+    }
+    return upscaler;
+  } catch(err) {
+    if(loading?.promise===pending) loading=null;
+    throw err;
+  }
+}
 export async function upscaleNeural(
   source: HTMLCanvasElement | HTMLImageElement,
   scale: AiScale,
   onProgress: AiProgress,
   signal: AbortSignal
 ): Promise<string> {
-  // Importación diferida: no bloquea el arranque ni las herramientas clásicas.
-  await import('@tensorflow/tfjs');
-  const [{ default: Upscaler }, modelModule] = await Promise.all([
-    import('upscaler'),
-    scale === 2 ? import('@upscalerjs/esrgan-slim/2x') : import('@upscalerjs/esrgan-slim/4x')
-  ]);
-  if (signal.aborted) throw new DOMException('Cancelado', 'AbortError');
-  const upscaler = new Upscaler({ model: modelModule.default });
-  try {
-    const output = await upscaler.upscale(source, {
-      output: 'base64',
-      patchSize: 48,
-      padding: 4,
-      signal,
-      awaitNextFrame: true,
-      progress: (percent: number) => onProgress(Math.min(100, Math.max(0, Math.round(percent * 100))))
-    });
-    if (typeof output !== 'string' || !output.startsWith('data:image/')) {
-      throw new Error('El modelo no devolvió una imagen válida.');
+  if(signal.aborted) throw new DOMException('Cancelado','AbortError');
+  const upscaler=await getUpscaler(scale);
+  if(signal.aborted) throw new DOMException('Cancelado','AbortError');
+  let lastProgress=-1;
+  // Los parches de 64px requieren menos inferencias que los anteriores de 48px.
+  // Con padding 2 se conservan los bordes de cada fragmento.
+  const output = await upscaler.upscale(source, {
+    output: 'base64',
+    patchSize: 64,
+    padding: 2,
+    signal,
+    awaitNextFrame: true,
+    progress: (fraction: number) => {
+      const value=Math.min(100,Math.max(0,Math.round(fraction*100)));
+      if(value!==lastProgress) {lastProgress=value; onProgress(value);}
     }
-    return output;
-  } finally {
-    upscaler.dispose();
+  });
+  if(typeof output!=='string'||!output.startsWith('data:image/')) {
+    throw new Error('El modelo no devolvió una imagen válida.');
   }
+  onProgress(100);
+  return output;
 }
 
 export function couldNeedNeural(command: string): boolean {

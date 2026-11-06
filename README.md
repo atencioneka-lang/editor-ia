@@ -43,3 +43,12 @@ Se han preparado el pipeline de publicación y el control de versiones. La compi
 
 - https://vite.dev/guide/static-deploy
 - https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
+
+
+## Alfa 0.5 — rapidez y referencias de calidad
+
+- Muestra IA rápida de **128×128** y muestra detallada de **256×256**, ambas con inferencia neuronal, no simples filtros.
+- Se reutiliza el modelo neuronal mientras permanezca abierta la pestaña; cambiar de factor 2× a 4× reemplaza la instancia en memoria.
+- Inferencia por parches de 64 px con padding 2 px para disminuir el número de pasos. El rendimiento depende de la GPU/navegador y puede seguir siendo lento en equipos sin aceleración compatible.
+- **Referencias de producto:** experiencia de edición fiel de imágenes similar a la que el usuario valora en ChatGPT, y animación de imágenes con movimiento fluido similar a la que valora en Grok. Estos son objetivos de calidad, **no integraciones con sus modelos**.
+- La generación de video por IA todavía no está incluida.
