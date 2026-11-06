@@ -24,7 +24,6 @@ export async function editWithQwen(image:Blob,prompt:string,quality:RemoteQualit
   client=await Client.connect('Qwen/Qwen-Image-2.1');
  }catch(err){throw explainQwenError(err,'conexion');}
 
- let requestState:unknown;
  let seed=0;
  update('2/4 · Enviando fotografía a la galería de Qwen…');
  try {
@@ -41,20 +40,19 @@ export async function editWithQwen(image:Blob,prompt:string,quality:RemoteQualit
    randomize_seed:true
   });
   const values=prep.data as unknown[];
-  if(!Array.isArray(values)||values.length<4)throw Error('La preparación no devolvió el estado de Qwen.');
+  // La cuarta salida es gr.State, que Gradio almacena en la sesión.
+  // El cliente solo devuelve las salidas públicas (normalmente 3).
+  if(!Array.isArray(values)||values.length<2)throw Error('La preparación no devolvió la semilla esperada.');
   seed=typeof values[1]==='number'?values[1]:0;
-  requestState=values[3];
-  if(!requestState||typeof requestState!=='object')throw Error('Qwen no devolvió el estado de la fotografía.');
-  if(Array.isArray((requestState as {image_paths?:unknown}).image_paths)&&!(requestState as {image_paths:unknown[]}).image_paths.length){
-   throw Error('El servidor recibió cero imágenes; la edición no se ejecutó.');
-  }
+  // NO leer prep.data[3]: el estado se pasa automáticamente entre
+  // prepare_request y generate_request usando el mismo Client/session_hash.
  }catch(err){throw explainQwenError(err,'preparacion');}
 
  update('3/4 · Generando imagen. La cola del servidor gratuito puede demorar…');
  let source='';
  try{
   const generated=await client.predict('/generate_request',{
-   request_state:requestState,
+   // request_state es un gr.State implícito; no se suministra manualmente.
    original_prompt:prompt,
    enable_extend:false,
    custom_size:false,
