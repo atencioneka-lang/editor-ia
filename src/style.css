@@ -42,3 +42,6 @@
 /* Alfa 0.4: la vista ampliada puede desplazarse sin recortar la imagen. */
 .zoom-mode .image-stage{max-width:none;align-self:flex-start}
 .zoom-mode .canvas-area{overflow:auto}
+
+/* Alfa 0.6: restaura expectativas y no ejecuta el modelo ineficaz por defecto. */
+.model-notice{font-size:12px;line-height:1.6;border:1px solid #4a5366;border-radius:9px;padding:11px;margin-top:12px;background:#1b2434;color:#d6dfef}.experimental-model{margin-top:14px;border:1px solid #39445c;border-radius:9px;padding:11px;background:#131c2c}.experimental-model summary{cursor:pointer;font-size:12px;font-weight:700;color:#bac9e6}.experimental-model summary:hover{color:white}

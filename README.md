@@ -52,3 +52,8 @@ Se han preparado el pipeline de publicación y el control de versiones. La compi
 - Inferencia por parches de 64 px con padding 2 px para disminuir el número de pasos. El rendimiento depende de la GPU/navegador y puede seguir siendo lento en equipos sin aceleración compatible.
 - **Referencias de producto:** experiencia de edición fiel de imágenes similar a la que el usuario valora en ChatGPT, y animación de imágenes con movimiento fluido similar a la que valora en Grok. Estos son objetivos de calidad, **no integraciones con sus modelos**.
 - La generación de video por IA todavía no está incluida.
+
+
+## Alfa 0.6 — honestidad de calidad y protección frente a esperas
+
+Las pruebas reales aportadas por el usuario mostraron que ESRGAN Slim casi no generaba mejora perceptible. Se desactiva la ejecución automática de este modelo en respuesta a instrucciones genéricas como «mejora la calidad». Se conserva únicamente bajo un apartado experimental y con confirmación previa para la ampliación completa. La integración de un motor generativo fotográfico de mayor calidad queda pendiente; el proyecto no debe afirmar que ya ofrece esa restauración ni prometer prestaciones o costes no verificados.
