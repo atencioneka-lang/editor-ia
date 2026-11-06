@@ -1,0 +1,16 @@
+[package]
+name = "editor-ia"
+version = "0.1.0"
+description = "Editor local de imagenes y video"
+authors = ["Editor IA"]
+edition = "2021"
+
+[lib]
+name = "editor_ia_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

@@ -1,0 +1,25 @@
+EDITOR IA ALFA 0.3 — PUBLICACIÓN INICIAL, UNA SOLA VEZ
+
+Meta: tener una dirección fija que se actualiza cuando se publique código nuevo.
+
+1. En GitHub (https://github.com/new), crea un repositorio PÚBLICO con nombre: editor-ia.
+   Deja vacía la creación inicial (sin README, licencia ni .gitignore).
+2. Abre ese repositorio y usa "uploading an existing file" / Add file > Upload files.
+3. Arrastra el CONTENIDO de esta carpeta descomprimida, no el ZIP.
+   Incluye la carpeta .github/workflows/deploy.yml. No subas fotos ni videos personales.
+4. Confirma los cambios en la rama main (Commit changes).
+5. Ve a Settings > Pages > Build and deployment > Source > GitHub Actions.
+6. En Actions, comprueba que el flujo "Publicar Editor IA automáticamente" concluya bien.
+7. En Settings > Pages verás el enlace real de tu sitio, normalmente:
+   https://TU_USUARIO.github.io/editor-ia/
+
+Desde entonces visita ESA DIRECCIÓN, NO localhost:1420. Si hay una nueva versión
+publicada, F5 carga la versión más reciente; la app también consulta actualizaciones.
+El despliegue requiere enviar cada actualización a GitHub: F5 no crea ni publica código.
+
+El editor web conserva el procesamiento básico y el ensayo de superresolución.
+No incorpora aún generación de videos por IA ni exportación MP4.
+Las imágenes abiertas y cambios sin exportar se pierden al recargar: exporta antes.
+
+Si una compilación falla, comparte una captura de GitHub > Actions, no vuelvas a
+instalar Node.js ni empieces el proyecto de cero.

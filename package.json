@@ -1,0 +1,30 @@
+{
+  "name": "editor-ia",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test": "node --experimental-strip-types tests/basic.mjs"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.468.0",
+    "upscaler": "1.0.0",
+    "@tensorflow/tfjs": "4.22.0",
+    "@upscalerjs/esrgan-slim": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.0.0"
+  }
+}
