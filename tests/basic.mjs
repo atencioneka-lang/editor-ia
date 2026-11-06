@@ -25,3 +25,10 @@ assert.ok(specific.includes('máscara PNG'));
 assert.ok(specific.includes('Conserva el rostro'));
 assert.ok(!specific.includes('Conserva exactamente las prendas'));
 console.log('Pruebas de instrucciones y preservación: OK');
+
+import {localFilter,LOCAL_EFFECTS} from '../src/local-effects.ts';
+assert.equal(LOCAL_EFFECTS.length,6);
+assert.equal(localFilter('brightness',0),'brightness(1.000)');
+assert.equal(localFilter('grayscale',150),'grayscale(100%)');
+assert.equal(localFilter('soften',36),'blur(2.00px)');
+console.log('Pruebas de filtros locales: OK');

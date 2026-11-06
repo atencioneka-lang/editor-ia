@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
-import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info} from 'lucide-react';
+import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info,SlidersHorizontal} from 'lucide-react';
+import {LOCAL_EFFECTS,localFilter,type LocalEffect} from './local-effects';
 import {GOALS,defaultProtections,buildEditPrompt,type EditGoal,type Protections} from './edit-plan';
 
 type Photo={url:string;name:string;width:number;height:number;owned:boolean};
@@ -45,6 +46,9 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
  const [notice,setNotice]=useState('Importa una fotografía o utiliza la que ya cargaste en Fotografías.');
  const [copied,setCopied]=useState(false);
  const [compare,setCompare]=useState(50);
+ const [localEffect,setLocalEffect]=useState<LocalEffect>('brightness');
+ const [localStrength,setLocalStrength]=useState(35);
+ const [applying,setApplying]=useState(false);
  const paintRef=useRef<HTMLCanvasElement>(null);
  const painting=useRef(false);
  const fileRef=useRef<HTMLInputElement>(null);
@@ -128,6 +132,38 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
    setNotice(mask?'Máscara PNG exportada. Transparente = zona a editar; blanco opaco = conservar.':'Imagen PNG preparada. Es una copia para el modelo; el original no se ha modificado.');
   }catch(err){setNotice(err instanceof Error?err.message:'No se pudo exportar.');}
  };
+ const applyLocal=async()=>{
+  if(!photo||applying)return;
+  setApplying(true);
+  setNotice('Aplicando corrección fotográfica local dentro de Editor IA…');
+  try{
+   const img=await photoImage(photo);
+   const maxPixels=4_000_000;
+   const ratio=Math.min(1,2560/Math.max(photo.width,photo.height),Math.sqrt(maxPixels/(photo.width*photo.height)));
+   const w=Math.max(1,Math.round(photo.width*ratio)),h=Math.max(1,Math.round(photo.height*ratio));
+   const base=document.createElement('canvas');base.width=w;base.height=h;
+   const baseCtx=base.getContext('2d');if(!baseCtx)throw Error('El navegador no pudo crear el lienzo.');
+   baseCtx.drawImage(img,0,0,w,h);
+   const layer=document.createElement('canvas');layer.width=w;layer.height=h;
+   const layerCtx=layer.getContext('2d');if(!layerCtx)throw Error('No se pudo crear la corrección.');
+   layerCtx.filter=localFilter(localEffect,localStrength);
+   layerCtx.drawImage(img,0,0,w,h);layerCtx.filter='none';
+   if(hasSelection){
+    const selection=paintRef.current;
+    if(!selection)throw Error('Falta la selección.');
+    layerCtx.globalCompositeOperation='destination-in';
+    layerCtx.drawImage(selection,0,0,w,h);
+    layerCtx.globalCompositeOperation='source-over';
+   }
+   baseCtx.drawImage(layer,0,0);
+   const blob=await new Promise<Blob>((resolve,reject)=>base.toBlob(b=>b?resolve(b):reject(Error('No se pudo crear el resultado.')),'image/png'));
+   const name=photo.name.replace(/\.[^.]+$/,'')+'-corregida.png';
+   const next=await asPhoto(new File([blob],name,{type:'image/png'}));
+   setResult(next);setCompare(50);
+   setNotice('Ajuste local aplicado: '+LOCAL_EFFECTS.find(e=>e.id===localEffect)?.label+' ('+w+' × '+h+'). Revisa el resultado en Antes / después. No se ha generado ropa, postura ni detalle mediante IA.');
+  }catch(err){setNotice(err instanceof Error?err.message:'Falló la corrección.');}
+  finally{setApplying(false);}
+ };
  const guards:[keyof Protections,string][]=[
   ['face','Preservar rostro e identidad'],
   ['body','Preservar contextura y proporciones'],
@@ -164,11 +200,17 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
       <button className="secondary" disabled={!photo} onClick={()=>{void prepared(false)}}><Download size={15}/> Descargar imagen preparada</button>
       <button className="secondary" disabled={!photo||!hasSelection} onClick={()=>{void prepared(true)}}><Download size={15}/> Descargar máscara PNG</button>
     </div>
-    <div className="advanced-section-title advanced-result-head">4. Comparar resultado de un modelo</div>
+    <div className="advanced-section-title advanced-result-head">4. Aplicar corrección local dentro de la app</div>
+    <p className="advanced-footnote">Estos ajustes son inmediatos y no generativos. Se aplican a la zona pintada en azul; sin selección, a la imagen completa. No pueden cambiar prendas ni posturas.</p>
+    <div className="local-effects-grid">{LOCAL_EFFECTS.map(item=><button key={item.id} className={localEffect===item.id?'active':''} onClick={()=>setLocalEffect(item.id)}><strong>{item.label}</strong><small>{item.description}</small></button>)}</div>
+    <label className="local-effect-slider">Intensidad: {localStrength}% <input type="range" min="0" max="100" value={localStrength} onChange={e=>setLocalStrength(Number(e.target.value))}/></label>
+    <button className="primary" disabled={!photo||applying} onClick={()=>{void applyLocal()}}><SlidersHorizontal size={16}/>{applying?'Procesando imagen…':'Aplicar ajuste y ver resultado'}</button>
+    <div className="advanced-section-title advanced-result-head">5. Comparar antes y después</div>
     <div className="advanced-upload-row">
       <button className="secondary" onClick={()=>resultRef.current?.click()} disabled={!photo}><Images size={15}/> Abrir resultado editado</button>
       <input ref={resultRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{load(e.target.files?.[0]??null,true);e.target.value='';}}/>
       {result&&<button className="secondary" onClick={()=>setResult(null)}>Quitar resultado</button>}
+      {result&&<a className="secondary" href={result.url} download={result.name}><Download size={15}/> Descargar resultado</a>}
     </div>
     {photo&&result&&<><div className="advanced-compare" style={{aspectRatio:photo.width+'/'+photo.height}}>
       <img src={photo.url} alt="Antes, original"/>

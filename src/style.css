@@ -99,3 +99,12 @@
 @media(max-width:1100px){.advanced-layout{grid-template-columns:1fr}.advanced-photo-frame{max-height:650px}}
 @media(max-width:780px){.advanced-editor{padding:12px}.advanced-layout{gap:12px}.advanced-preview,.advanced-controls{padding:12px}}
 @media(max-width:420px){.advanced-goals{grid-template-columns:1fr}}
+
+/* Alfa 1.0: ajuste fotográfico local realmente ejecutable y resultado dentro del editor. */
+.local-effects-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.local-effects-grid button{border:1px solid #3d4b68;border-radius:9px;background:#222d40;color:#d3dced;display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px;cursor:pointer}
+.local-effects-grid button.active{background:#303f69;border-color:#a0aeff}
+.local-effects-grid button strong{font-size:12px}.local-effects-grid button small{font-size:10px;color:#a7b7d4}
+.local-effect-slider{display:flex;align-items:center;gap:12px;font-size:12px;color:#c4d0e6}.local-effect-slider input{flex:1}
+.advanced-upload-row a.secondary{font-size:12px;text-decoration:none;padding:10px 12px}
+@media(max-width:600px){.local-effects-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
