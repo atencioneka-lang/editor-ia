@@ -62,3 +62,8 @@ Las pruebas reales aportadas por el usuario mostraron que ESRGAN Slim casi no ge
 ## Alfa 0.7 — Laboratorio gratuito de edición generativa
 
 Se añade una pestaña «IA gratis · Prueba» que incorpora como iframe la demostración **Qwen-Image-Edit-2511-Fast** alojada en Hugging Face ZeroGPU. Permite probar un modelo externo de edición con el propio cargador y formulario del proveedor, sin instalar GPU local. Incluye enlace alternativo, instrucciones copiables y una advertencia explícita: las fotografías se transfieren a terceros cuando se suben en el iframe. Esta es una **prueba de integración visual**, no un API nativo. Puede tener cuotas, colas y límites; no existe promesa de rapidez ni gratuidad ilimitada. El usuario decidirá si el resultado cumple su estándar antes de integrarlo por API.
+
+
+## Alfa 0.8 — segunda ronda tras resultados de calidad insuficiente
+
+Se sustituyeron los demos rápidos de baja calidad visual por Qwen-Image 2.1 (Space oficial con 40 pasos y opciones 1024/2048), FLUX 3 Image Klein (Space oficial) y un Space comunitario alternativo de Qwen-Image 2.1. Los tres son proveedores externos con cuota/colas. Su interfaz se muestra embebida; las fotografías se cargan al proveedor elegido, y todavía no existe una integración programática con el editor. Se debe efectuar una comparación real con una imagen antes de afirmar mejora de calidad o velocidad.
