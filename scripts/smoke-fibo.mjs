@@ -15,6 +15,18 @@ function samplePng(){
  const hdr=Buffer.alloc(13);hdr.writeUInt32BE(w,0);hdr.writeUInt32BE(h,4);hdr[8]=8;hdr[9]=2;
  return Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',hdr),chunk('IDAT',deflateSync(r)),chunk('IEND',Buffer.alloc(0))]);
 }
+
+function sampleMaskPng(){
+ const w=256,h=256,raw=Buffer.alloc(h*(1+w*3));
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const value=Math.hypot(x-128,y-106)<70?255:0;
+  const at=y*(1+w*3)+1+x*3;
+  raw[at]=value;raw[at+1]=value;raw[at+2]=value;
+ }
+ const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(w,0);ihdr.writeUInt32BE(h,4);ihdr[8]=8;ihdr[9]=2;
+ return Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]);
+}
+
 const DEADLINE=145000;
 const timeout=setTimeout(()=>{console.error('FIBO_SMOKE timeout after '+DEADLINE+'ms');process.exit(124);},DEADLINE);
 try{
@@ -23,13 +35,20 @@ try{
  console.log('FIBO_SMOKE connected');
  const api=await app.view_api();
  console.log('FIBO_SMOKE named routes:',Object.keys(api.named_endpoints||{}));
+ const browserOrigin='https://atencioneka-lang.github.io';
+ const check=await fetch('https://briaai-fibo-2-0-editing.hf.space/gradio_api/info',{headers:{Origin:browserOrigin}});
+ const cors=check.headers.get('access-control-allow-origin');
+ console.log('FIBO_SMOKE CORS:',check.status,cors);
+ if(!check.ok)throw Error('The browser API route is unavailable: '+check.status);
+ if(cors!=='*'&&cors!==browserOrigin)throw Error('The browser Origin is not permitted by the public Space.');
  const file=new File([samplePng()],'autumn-demo.png',{type:'image/png'});
+ const maskFile=new File([sampleMaskPng()],'painted-zone.png',{type:'image/png'});
  console.log('FIBO_SMOKE beginning /edit with a non-sensitive synthetic image');
  const result=await app.predict('/edit',{
   source:handle_file(file),
   instruction:'Change the tree foliage from green to orange autumn leaves, preserving the sky and ground.',
   json_instruction:'',
-  ref2:null,ref3:null,ref4:null,mask:null,seed:42,randomize:false,steps:4
+  ref2:null,ref3:null,ref4:null,mask:handle_file(maskFile),seed:42,randomize:false,steps:4
  });
  const item=result.data?.[0];
  const url=item?.image_data||item?.data||item?.url;
