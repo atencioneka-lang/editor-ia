@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {ExternalLink, Copy, ShieldAlert, FlaskConical, Info, CheckCircle2} from 'lucide-react';
 
 const DEMO_PAGE='https://huggingface.co/spaces/linoyts/Qwen-Image-Edit-2511-Fast';
