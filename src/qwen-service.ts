@@ -1,4 +1,5 @@
 import {Client,handle_file} from '@gradio/client';
+import {galleryPayload,explainQwenError} from './qwen-contract';
 
 // Proveedor público oficial, sujeto a filtros, cuotas y cambios de API.
 // Ninguna solicitud se envía sin el clic del usuario.
@@ -16,46 +17,70 @@ function fileSource(output:unknown):string{
 }
 export async function editWithQwen(image:Blob,prompt:string,quality:RemoteQuality,update:(message:string)=>void):Promise<Blob>{
  if(!prompt.trim()||image.size===0)throw Error('Carga una imagen y escribe una instrucción.');
- update('Conectando con el servicio oficial de Qwen…');
- const client=await Client.connect('Qwen/Qwen-Image-2.1');
- update('Preparando la fotografía y la instrucción…');
- const prep=await client.predict('/prepare_request',{
-  input_images:[handle_file(image)],
-  original_prompt:prompt,
-  enable_extend:false,
-  custom_size:false,
-  quality:quality,
-  seed:0,
-  randomize_seed:true
- });
- const values=prep.data as unknown[];
- if(!Array.isArray(values)||values.length<4)throw Error('El servidor cambió el formato de preparación.');
- const seed=typeof values[1]==='number'?values[1]:0;
- update('Generando fotografía: el servidor gratuito puede tener cola…');
- const generated=await client.predict('/generate_request',{
-  request_state:values[3],
-  original_prompt:prompt,
-  enable_extend:false,
-  custom_size:false,
-  log_dir:'',
-  seed:seed,
-  height:1536,
-  width:1024,
-  negative_prompt:' '
- });
- const source=fileSource((generated.data as unknown[])?.[0]);
- if(!source)throw Error('El proveedor no devolvió una imagen.');
- if(source.startsWith('data:image/')){
-  const blob=await fetch(source).then(r=>r.blob());
-  if(!blob.size)throw Error('El resultado no contiene datos.');
+
+ let client:Awaited<ReturnType<typeof Client.connect>>;
+ update('1/4 · Comprobando conexión con Qwen…');
+ try {
+  client=await Client.connect('Qwen/Qwen-Image-2.1');
+ }catch(err){throw explainQwenError(err,'conexion');}
+
+ let requestState:unknown;
+ let seed=0;
+ update('2/4 · Enviando fotografía a la galería de Qwen…');
+ try {
+  // La galería de Gradio requiere un objeto {image,caption}, no un archivo
+  // suelto. La forma antigua fallaba antes de ejecutar la inferencia.
+  const inputFile=new File([image],'imagen-editor-ia.png',{type:'image/png'});
+  const prep=await client.predict('/prepare_request',{
+   input_images:galleryPayload(handle_file(inputFile)),
+   original_prompt:prompt,
+   enable_extend:false,
+   custom_size:false,
+   quality,
+   seed:0,
+   randomize_seed:true
+  });
+  const values=prep.data as unknown[];
+  if(!Array.isArray(values)||values.length<4)throw Error('La preparación no devolvió el estado de Qwen.');
+  seed=typeof values[1]==='number'?values[1]:0;
+  requestState=values[3];
+  if(!requestState||typeof requestState!=='object')throw Error('Qwen no devolvió el estado de la fotografía.');
+  if(Array.isArray((requestState as {image_paths?:unknown}).image_paths)&&!(requestState as {image_paths:unknown[]}).image_paths.length){
+   throw Error('El servidor recibió cero imágenes; la edición no se ejecutó.');
+  }
+ }catch(err){throw explainQwenError(err,'preparacion');}
+
+ update('3/4 · Generando imagen. La cola del servidor gratuito puede demorar…');
+ let source='';
+ try{
+  const generated=await client.predict('/generate_request',{
+   request_state:requestState,
+   original_prompt:prompt,
+   enable_extend:false,
+   custom_size:false,
+   log_dir:'',
+   seed,
+   height:1536,
+   width:1024,
+   negative_prompt:''
+  });
+  source=fileSource((generated.data as unknown[])?.[0]);
+  if(!source)throw Error('El servicio no devolvió una imagen.');
+ }catch(err){throw explainQwenError(err,'generacion');}
+
+ update('4/4 · Recuperando la edición en Editor IA…');
+ try{
+  let blob:Blob;
+  if(source.startsWith('data:image/'))blob=await fetch(source).then(r=>r.blob());
+  else{
+   const url=new URL(source);
+   if(url.protocol!=='https:'||(!url.hostname.endsWith('.hf.space')&&!url.hostname.endsWith('.huggingface.co')))
+    throw Error('La dirección de la imagen no pertenece a Hugging Face.');
+   const result=await fetch(url.toString());
+   if(!result.ok)throw Error('La descarga devolvió HTTP '+result.status+'.');
+   blob=await result.blob();
+  }
+  if(!blob.size||!blob.type.startsWith('image/'))throw Error('El archivo generado está vacío o no es una imagen.');
   return blob;
- }
- const url=new URL(source);
- if(url.protocol!=='https:'||(!url.hostname.endsWith('.hf.space')&&!url.hostname.endsWith('.huggingface.co')))
-  throw Error('El proveedor devolvió una URL no autorizada.');
- const res=await fetch(url.toString());
- if(!res.ok)throw Error('No se pudo recuperar el resultado de la edición.');
- const blob=await res.blob();
- if(blob.size===0||!blob.type.startsWith('image/'))throw Error('El archivo resultante no es una imagen.');
- return blob;
+ }catch(err){throw explainQwenError(err,'descarga');}
 }

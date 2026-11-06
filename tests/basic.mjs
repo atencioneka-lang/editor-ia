@@ -32,3 +32,10 @@ assert.equal(localFilter('brightness',0),'brightness(1.000)');
 assert.equal(localFilter('grayscale',150),'grayscale(100%)');
 assert.equal(localFilter('soften',36),'blur(2.00px)');
 console.log('Pruebas de filtros locales: OK');
+
+import {galleryPayload,explainQwenError} from '../src/qwen-contract.ts';
+const gallery=galleryPayload({path:'/uploads/imagen.png'});
+assert.deepEqual(gallery,[{image:{path:'/uploads/imagen.png'},caption:null}]);
+assert.match(explainQwenError(new Error('An error occurred'),'preparacion').message,/Carga y preparación/);
+assert.match(explainQwenError(new Error('rate limit'),'generacion').message,/cuota/);
+console.log('Contrato de galería Gradio y mensajes por etapa: OK');

@@ -80,3 +80,8 @@ El editor A+B+C permite aplicar correcciones **reales, no generativas** directam
 ## Alfa 1.1: edición generativa experimental dentro de Editor IA
 
 La pantalla principal se simplificó para fotos, selección, instrucción y botón **Aplicar edición con IA**. Se añadió un cliente Gradio del Space oficial `Qwen/Qwen-Image-2.1`, con dos fases de API y filtros de seguridad del proveedor. El envío exige consentimiento explícito por cada sesión; no se suben fotos simplemente al abrir el editor. Se recibe un PNG y, cuando hay selección, el navegador combina el resultado conservando el original fuera de la máscara. Se puede comparar y descargar desde la app. El funcionamiento real depende de la disponibilidad externa; **las pruebas de GitHub validan código, no la calidad ni una generación real en GPU**. Sin garantía de uso gratuito ilimitado ni calidad idéntica a ChatGPT.
+
+
+## Alfa 1.2 — corrección de formato Gallery e información de errores
+
+Se detectó que la API del Space oficial Qwen-Image-2.1 utiliza Gradio Gallery, que exige una lista de objetos `{image: FileData, caption: null}`. Editor IA enviaba `[FileData]`, formato incorrecto. La app ahora serializa la fotografía con el esquema de Gallery, verifica el estado de la primera etapa y distingue errores de conexión, preparación, generación y descarga. Se añadieron pruebas unitarias de dicho contrato. **La publicación solo valida el código; no demuestra inferencia exitosa sobre el servidor externo**. La disponibilidad gratuita, cuota, filtros de seguridad y respuestas del proveedor siguen fuera de nuestro control.

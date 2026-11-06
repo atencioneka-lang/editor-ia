@@ -3,6 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from 'react';
 import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info,SlidersHorizontal} from 'lucide-react';
 import {LOCAL_EFFECTS,localFilter,type LocalEffect} from './local-effects';
 import {editWithQwen,type RemoteQuality} from './qwen-service';
+import {QwenStageError} from './qwen-contract';
 import {GOALS,defaultProtections,buildEditPrompt,type EditGoal,type Protections} from './edit-plan';
 
 type Photo={url:string;name:string;width:number;height:number;owned:boolean};
@@ -205,11 +206,9 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
     setNotice('Edición generativa recibida. Resultado disponible abajo para comparar y descargar; la foto original permanece intacta.');
    }finally{URL.revokeObjectURL(generatedUrl);}
   }catch(err){
-   const raw=err instanceof Error?err.message:String(err);
-   const message=/classifiers|safety|moderation|invalid prompt|policy/i.test(raw)?'El proveedor rechazó la solicitud por sus reglas de seguridad.':
-     /quota|rate limit|too many|queue|gpu/i.test(raw)?'El servicio gratuito alcanzó su cuota o está saturado.':
-     /not found|api|endpoint|function/i.test(raw)?'El servicio externo cambió su API o no está disponible.':raw;
-   setNotice('No se generó ninguna imagen: '+message);
+   const detail=err instanceof Error?err.message:String(err);
+   const message=err instanceof QwenStageError?detail:'Error de edición: '+detail;
+   setNotice('No se generó ninguna imagen. '+message+' No repetiremos la solicitud automáticamente.');
   }finally{setAiBusy(false);}
  };
 
@@ -277,7 +276,7 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
      <label htmlFor="advanced-ai-quality">Modo de generación</label>
      <select id="advanced-ai-quality" value={aiQuality} disabled={aiBusy} onChange={e=>setAiQuality(e.target.value as RemoteQuality)}>
       <option value="speed">Rápido · 1024 px</option>
-      <option value="quality">Más detalle · 2048 px (más lento)</option>
+      <option value="quality">Más detalle · 2048 px (más lento, cuota adicional)</option>
      </select>
      <label className="advanced-ai-consent"><input type="checkbox" checked={allowUpload} onChange={e=>setAllowUpload(e.target.checked)}/> Acepto enviar esta foto y mi instrucción al servidor externo de Qwen/Hugging Face. No subiré fotos privadas o sensibles.</label>
      <button className="primary advanced-ai-cta" disabled={!photo||!instruction.trim()||!allowUpload||aiBusy||applying} onClick={()=>{void applyAI()}}><SlidersHorizontal size={17}/>{aiBusy?'Generando con IA…':'3. Aplicar edición con IA'}</button>
