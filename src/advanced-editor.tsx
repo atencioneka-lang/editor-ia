@@ -3,6 +3,8 @@ import type {PointerEvent as ReactPointerEvent} from 'react';
 import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info,SlidersHorizontal} from 'lucide-react';
 import {LOCAL_EFFECTS,localFilter,type LocalEffect} from './local-effects';
 import {editWithQwen,type RemoteQuality} from './qwen-service';
+import {editWithFibo} from './fibo-service';
+import {selectionToBinaryMask} from './fibo-contract';
 import {QwenStageError} from './qwen-contract';
 import {GOALS,defaultProtections,buildEditPrompt,type EditGoal,type Protections} from './edit-plan';
 
@@ -52,6 +54,7 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
  const [localStrength,setLocalStrength]=useState(35);
  const [applying,setApplying]=useState(false);
  const [aiBusy,setAiBusy]=useState(false);
+ const [aiEngine,setAiEngine]=useState<'fibo'|'qwen'>('fibo');
  const [aiQuality,setAiQuality]=useState<RemoteQuality>('speed');
  const [allowUpload,setAllowUpload]=useState(false);
  const paintRef=useRef<HTMLCanvasElement>(null);
@@ -181,7 +184,38 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
    const prepared=document.createElement('canvas');prepared.width=w;prepared.height=h;
    prepared.getContext('2d')?.drawImage(img,0,0,w,h);
    const input=await new Promise<Blob>((resolve,reject)=>prepared.toBlob(b=>b?resolve(b):reject(Error('No se pudo preparar la foto.')),'image/png'));
-   const output=await editWithQwen(input,prompt,aiQuality,setNotice);
+   // Prepare an actual white=edit / black=protect mask for FIBO.
+   // Qwen does not support masks, so the selection stays local there.
+   let paintMask:HTMLCanvasElement|null=null;
+   let providerMask:Blob|null=null;
+   if(hasSelection&&paintRef.current){
+    const selection=paintRef.current;
+    const source=selection.getContext('2d',{willReadFrequently:true})?.getImageData(0,0,selection.width,selection.height);
+    if(!source)throw Error('No se pudo leer la selección de la foto.');
+    const binary=selectionToBinaryMask(source.data);
+    const nativeMask=document.createElement('canvas');
+    nativeMask.width=selection.width;nativeMask.height=selection.height;
+    const nativeCtx=nativeMask.getContext('2d');if(!nativeCtx)throw Error('No se pudo crear la máscara.');
+    const pixels=nativeCtx.createImageData(selection.width,selection.height);pixels.data.set(binary);
+    nativeCtx.putImageData(pixels,0,0);
+    // An opaque black background and an opaque white selection is what FIBO accepts.
+    if(aiEngine==='fibo')providerMask=await new Promise<Blob>((resolve,reject)=>nativeMask.toBlob(b=>b?resolve(b):reject(Error('No se pudo guardar la máscara.')),'image/png'));
+    paintMask=document.createElement('canvas');
+    paintMask.width=w;paintMask.height=h;
+    const matteCtx=paintMask.getContext('2d');if(!matteCtx)throw Error('No se pudo crear la composición.');
+    const matte=matteCtx.createImageData(selection.width,selection.height);
+    for(let i=0;i<binary.length;i+=4){
+     matte.data[i]=255;matte.data[i+1]=255;matte.data[i+2]=255;
+     matte.data[i+3]=binary[i]; // 0 outside selection, 255 inside.
+    }
+    const matteCanvas=document.createElement('canvas');
+    matteCanvas.width=selection.width;matteCanvas.height=selection.height;
+    matteCanvas.getContext('2d')?.putImageData(matte,0,0);
+    matteCtx.drawImage(matteCanvas,0,0,w,h);
+   }
+   const output=aiEngine==='fibo'
+     ?await editWithFibo(input,providerMask,prompt,setNotice)
+     :await editWithQwen(input,prompt,aiQuality,setNotice);
    const generated=new Image();const generatedUrl=URL.createObjectURL(output);
    try{
     generated.src=generatedUrl;await generated.decode();
@@ -189,14 +223,14 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
     const finalCtx=final.getContext('2d');if(!finalCtx)throw Error('No se pudo preparar el resultado.');
     if(!hasSelection)finalCtx.drawImage(generated,0,0,w,h);
     else{
-     // La máscara no se envía al modelo; se utiliza para conservar píxeles
-     // originales fuera de la selección en la composición final.
+     // Preserve original pixels outside the selected zone, even when a
+     // generative model has changed the rest of its output.
      finalCtx.drawImage(img,0,0,w,h);
      const layer=document.createElement('canvas');layer.width=w;layer.height=h;
      const layerCtx=layer.getContext('2d');if(!layerCtx)throw Error('No se pudo aplicar la máscara.');
      layerCtx.drawImage(generated,0,0,w,h);
      layerCtx.globalCompositeOperation='destination-in';
-     if(paintRef.current)layerCtx.drawImage(paintRef.current,0,0,w,h);
+     if(paintMask)layerCtx.drawImage(paintMask,0,0,w,h);
      layerCtx.globalCompositeOperation='source-over';
      finalCtx.drawImage(layer,0,0);
     }
@@ -225,7 +259,7 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
    <div><h1>Editar imagen con IA</h1><p>1. Sube tu foto · 2. Marca la zona · 3. Describe el cambio · 4. Aplica</p></div>
    <span className="advanced-local">Original protegido</span>
   </div>
-  <div className="advanced-disclaimer"><Info size={18}/><div><strong>Edición generativa experimental dentro de Editor IA.</strong> Al pulsar «Aplicar con IA», la fotografía se envía al proveedor oficial Qwen en Hugging Face. Es gratuito mientras haya cuota disponible; puede tener esperas, rechazos o fallos. La máscara preserva localmente las zonas no seleccionadas.</div></div>
+  <div className="advanced-disclaimer"><Info size={18}/><div><strong>Edición generativa experimental dentro de Editor IA.</strong> FIBO 2.0 Turbo permite editar usando la zona pintada y suele generar más rápido; Qwen sigue como alternativa. Los dos funcionan en servidores de Hugging Face con cuotas y reglas propias. El original no se reemplaza.</div></div>
   <div className="advanced-layout">
    <div className="advanced-preview">
     <div className="advanced-section-title">1. Foto y zona que deseas modificar</div>
@@ -273,14 +307,18 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
     <label className="advanced-textarea-label" htmlFor="advanced-instruction">Indica exactamente qué quieres cambiar</label>
     <textarea id="advanced-instruction" rows={4} value={instruction} placeholder="Ejemplo: cambiar la chaqueta por una de color azul sin modificar el rostro ni el fondo" onChange={e=>{setInstruction(e.target.value);setCopied(false)}}/>
     <div className="advanced-ai-start">
-     <label htmlFor="advanced-ai-quality">Modo de generación</label>
-     <select id="advanced-ai-quality" value={aiQuality} disabled={aiBusy} onChange={e=>setAiQuality(e.target.value as RemoteQuality)}>
-      <option value="speed">Rápido · 1024 px</option>
-      <option value="quality">Más detalle · 2048 px (más lento, cuota adicional)</option>
+     <label htmlFor="advanced-ai-engine">Motor de edición</label>
+     <select id="advanced-ai-engine" value={aiEngine} disabled={aiBusy} onChange={e=>{setAiEngine(e.target.value as 'fibo'|'qwen');setAllowUpload(false)}}>
+      <option value="fibo">FIBO 2.0 Turbo · 4 pasos (preferido)</option>
+      <option value="qwen">Qwen 2.1 · más lento (alternativo)</option>
      </select>
-     <label className="advanced-ai-consent"><input type="checkbox" checked={allowUpload} onChange={e=>setAllowUpload(e.target.checked)}/> Acepto enviar esta foto y mi instrucción al servidor externo de Qwen/Hugging Face. No subiré fotos privadas o sensibles.</label>
+     {aiEngine==='qwen'&&<select aria-label="Calidad Qwen" value={aiQuality} disabled={aiBusy} onChange={e=>setAiQuality(e.target.value as RemoteQuality)}>
+      <option value="speed">Qwen rápido · 1024 px</option>
+      <option value="quality">Qwen detalle · 2048 px</option>
+     </select>}
+     <label className="advanced-ai-consent"><input type="checkbox" checked={allowUpload} onChange={e=>setAllowUpload(e.target.checked)}/> Acepto enviar mi foto e instrucción a {aiEngine==='fibo'?'Bria FIBO':'Qwen'} en Hugging Face. No subiré fotos privadas o sensibles.</label>
      <button className="primary advanced-ai-cta" disabled={!photo||!instruction.trim()||!allowUpload||aiBusy||applying} onClick={()=>{void applyAI()}}><SlidersHorizontal size={17}/>{aiBusy?'Generando con IA…':'3. Aplicar edición con IA'}</button>
-     <p className="advanced-footnote">La app recibe el resultado directamente. El motor tiene filtros de seguridad y puede estar saturado. La selección es local: el modelo no la usa durante la generación.</p>
+     <p className="advanced-footnote">La imagen editada aparece debajo para comparar y descargar. FIBO usa la selección como máscara real; Qwen solo la aplica después. El proveedor gratuito puede limitar solicitudes o rechazar contenidos.</p>
     </div>
 
     <details className="advanced-extra"><summary>Opciones avanzadas: elementos a conservar e instrucciones completas</summary><div className="advanced-section-title">Elementos que deben conservarse</div>
