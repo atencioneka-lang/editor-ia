@@ -55,5 +55,5 @@ const pngPayload='data:image/png;base64,aGVsbG8=';
 assert.equal(parseFiboImageData({data:[{image_data:pngPayload,seed:8}]}),pngPayload);
 assert.throws(()=>parseFiboImageData({data:[{url:'https://untrusted.example.com/image.png'}]}),/PNG esperado/);
 assert.throws(()=>parseFiboImageData({data:[{image_data:'javascript:bad'}]}),/PNG esperado/);
-assert.deepEqual([...selectionToBinaryMask(new Uint8ClampedArray([102,144,255,0,102,144,255,240]))],[0,0,0,255,255,255,255]);
+assert.deepEqual([...selectionToBinaryMask(new Uint8ClampedArray([102,144,255,0,102,144,255,240]))],[0,0,0,255,255,255,255,255]);
 console.log('FIBO: seguridad PNG y máscara nativa de selección: OK');
