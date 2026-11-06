@@ -1,0 +1,25 @@
+name: Qwen real provider smoke check
+
+on:
+  push:
+    paths:
+      - 'scripts/smoke-qwen.mjs'
+      - '.github/workflows/qwen-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Attempt one official Qwen edition using a synthetic, non-private illustration
+        run: node scripts/smoke-qwen.mjs

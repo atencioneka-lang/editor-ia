@@ -39,3 +39,12 @@ assert.deepEqual(gallery,[{image:{path:'/uploads/imagen.png'},caption:null}]);
 assert.match(explainQwenError(new Error('An error occurred'),'preparacion').message,/Carga y preparación/);
 assert.match(explainQwenError(new Error('rate limit'),'generacion').message,/cuota/);
 console.log('Contrato de galería Gradio y mensajes por etapa: OK');
+
+
+import {readFileSync} from 'node:fs';
+const serviceSource=readFileSync(new URL('../src/qwen-service.ts',import.meta.url),'utf8');
+assert.ok(serviceSource.includes("client.predict('/prepare_request'"));
+assert.ok(serviceSource.includes("client.predict('/generate_request'"));
+assert.doesNotMatch(serviceSource,/values\.length\s*<\s*4/,'Qwen gr.State no aparece como cuarta salida pública');
+assert.doesNotMatch(serviceSource,/\brequest_state:\s*requestState\b/,'El estado no debe inyectarse manualmente en la llamada pública');
+console.log('Qwen: Gradio State vinculado a la sesión del cliente: OK');
