@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
 import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info,SlidersHorizontal} from 'lucide-react';
 import {LOCAL_EFFECTS,localFilter,type LocalEffect} from './local-effects';
+import {editWithQwen,type RemoteQuality} from './qwen-service';
 import {GOALS,defaultProtections,buildEditPrompt,type EditGoal,type Protections} from './edit-plan';
 
 type Photo={url:string;name:string;width:number;height:number;owned:boolean};
@@ -49,11 +50,15 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
  const [localEffect,setLocalEffect]=useState<LocalEffect>('brightness');
  const [localStrength,setLocalStrength]=useState(35);
  const [applying,setApplying]=useState(false);
+ const [aiBusy,setAiBusy]=useState(false);
+ const [aiQuality,setAiQuality]=useState<RemoteQuality>('speed');
+ const [allowUpload,setAllowUpload]=useState(false);
  const paintRef=useRef<HTMLCanvasElement>(null);
  const painting=useRef(false);
  const fileRef=useRef<HTMLInputElement>(null);
  const resultRef=useRef<HTMLInputElement>(null);
  useEffect(()=>()=>{if(photo?.owned)URL.revokeObjectURL(photo.url)},[photo]);
+ useEffect(()=>{if(initialImage){setPhoto({...initialImage,owned:false});setResult(null);}},[initialImage?.url]);
  useEffect(()=>()=>{if(result?.owned)URL.revokeObjectURL(result.url)},[result]);
  useEffect(()=>{
   if(!photo||!paintRef.current)return;
@@ -164,6 +169,50 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
   }catch(err){setNotice(err instanceof Error?err.message:'Falló la corrección.');}
   finally{setApplying(false);}
  };
+
+ const applyAI=async()=>{
+  if(!photo||!instruction.trim()||aiBusy)return;
+  if(!allowUpload){setNotice('Marca primero la casilla para autorizar el envío de la fotografía al servidor externo.');return;}
+  setAiBusy(true);
+  try{
+   const img=await photoImage(photo);
+   const [w,h]=maskSize(photo.width,photo.height);
+   const prepared=document.createElement('canvas');prepared.width=w;prepared.height=h;
+   prepared.getContext('2d')?.drawImage(img,0,0,w,h);
+   const input=await new Promise<Blob>((resolve,reject)=>prepared.toBlob(b=>b?resolve(b):reject(Error('No se pudo preparar la foto.')),'image/png'));
+   const output=await editWithQwen(input,prompt,aiQuality,setNotice);
+   const generated=new Image();const generatedUrl=URL.createObjectURL(output);
+   try{
+    generated.src=generatedUrl;await generated.decode();
+    const final=document.createElement('canvas');final.width=w;final.height=h;
+    const finalCtx=final.getContext('2d');if(!finalCtx)throw Error('No se pudo preparar el resultado.');
+    if(!hasSelection)finalCtx.drawImage(generated,0,0,w,h);
+    else{
+     // La máscara no se envía al modelo; se utiliza para conservar píxeles
+     // originales fuera de la selección en la composición final.
+     finalCtx.drawImage(img,0,0,w,h);
+     const layer=document.createElement('canvas');layer.width=w;layer.height=h;
+     const layerCtx=layer.getContext('2d');if(!layerCtx)throw Error('No se pudo aplicar la máscara.');
+     layerCtx.drawImage(generated,0,0,w,h);
+     layerCtx.globalCompositeOperation='destination-in';
+     if(paintRef.current)layerCtx.drawImage(paintRef.current,0,0,w,h);
+     layerCtx.globalCompositeOperation='source-over';
+     finalCtx.drawImage(layer,0,0);
+    }
+    const blob=await new Promise<Blob>((resolve,reject)=>final.toBlob(b=>b?resolve(b):reject(Error('No se pudo crear el PNG.')),'image/png'));
+    const edited=await asPhoto(new File([blob],'edicion-IA.png',{type:'image/png'}));
+    setResult(edited);setCompare(50);
+    setNotice('Edición generativa recibida. Resultado disponible abajo para comparar y descargar; la foto original permanece intacta.');
+   }finally{URL.revokeObjectURL(generatedUrl);}
+  }catch(err){
+   const raw=err instanceof Error?err.message:String(err);
+   const message=/classifiers|safety|moderation|invalid prompt|policy/i.test(raw)?'El proveedor rechazó la solicitud por sus reglas de seguridad.':
+     /quota|rate limit|too many|queue|gpu/i.test(raw)?'El servicio gratuito alcanzó su cuota o está saturado.':
+     /not found|api|endpoint|function/i.test(raw)?'El servicio externo cambió su API o no está disponible.':raw;
+   setNotice('No se generó ninguna imagen: '+message);
+  }finally{setAiBusy(false);}
+ };
+
  const guards:[keyof Protections,string][]=[
   ['face','Preservar rostro e identidad'],
   ['body','Preservar contextura y proporciones'],
@@ -174,13 +223,13 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
  const size=photo?maskSize(photo.width,photo.height):null;
  return <section className="advanced-editor" aria-label="Edición avanzada por zonas">
   <div className="advanced-heading">
-   <div><h1>Editor avanzado · A + B + C</h1><p>Control de instrucciones, preservación de identidad y máscaras de edición, sin alterar el archivo original.</p></div>
-   <span className="advanced-local">Preparación local y privada</span>
+   <div><h1>Editar imagen con IA</h1><p>1. Sube tu foto · 2. Marca la zona · 3. Describe el cambio · 4. Aplica</p></div>
+   <span className="advanced-local">Original protegido</span>
   </div>
-  <div className="advanced-disclaimer"><Info size={18}/><div><strong>La preparación es funcional; la edición generativa aún no está integrada.</strong> Puedes crear máscaras e instrucciones reales, pero cambiar una prenda o una postura requiere enviarlas a un modelo compatible. Los servicios externos tienen sus propios límites y políticas.</div></div>
+  <div className="advanced-disclaimer"><Info size={18}/><div><strong>Edición generativa experimental dentro de Editor IA.</strong> Al pulsar «Aplicar con IA», la fotografía se envía al proveedor oficial Qwen en Hugging Face. Es gratuito mientras haya cuota disponible; puede tener esperas, rechazos o fallos. La máscara preserva localmente las zonas no seleccionadas.</div></div>
   <div className="advanced-layout">
    <div className="advanced-preview">
-    <div className="advanced-section-title">1. Imagen y selección</div>
+    <div className="advanced-section-title">1. Foto y zona que deseas modificar</div>
     <div className="advanced-upload-row">
      <button className="secondary" onClick={()=>fileRef.current?.click()}><ImagePlus size={16}/> Abrir fotografía</button>
      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{load(e.target.files?.[0]??null,false);e.target.value='';}}/>
@@ -200,12 +249,12 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
       <button className="secondary" disabled={!photo} onClick={()=>{void prepared(false)}}><Download size={15}/> Descargar imagen preparada</button>
       <button className="secondary" disabled={!photo||!hasSelection} onClick={()=>{void prepared(true)}}><Download size={15}/> Descargar máscara PNG</button>
     </div>
-    <div className="advanced-section-title advanced-result-head">4. Aplicar corrección local dentro de la app</div>
+    <details className="advanced-extra"><summary>Herramientas rápidas de luz y color (sin IA)</summary><div className="advanced-section-title advanced-result-head">Ajustes locales</div>
     <p className="advanced-footnote">Estos ajustes son inmediatos y no generativos. Se aplican a la zona pintada en azul; sin selección, a la imagen completa. No pueden cambiar prendas ni posturas.</p>
     <div className="local-effects-grid">{LOCAL_EFFECTS.map(item=><button key={item.id} className={localEffect===item.id?'active':''} onClick={()=>setLocalEffect(item.id)}><strong>{item.label}</strong><small>{item.description}</small></button>)}</div>
     <label className="local-effect-slider">Intensidad: {localStrength}% <input type="range" min="0" max="100" value={localStrength} onChange={e=>setLocalStrength(Number(e.target.value))}/></label>
     <button className="primary" disabled={!photo||applying} onClick={()=>{void applyLocal()}}><SlidersHorizontal size={16}/>{applying?'Procesando imagen…':'Aplicar ajuste y ver resultado'}</button>
-    <div className="advanced-section-title advanced-result-head">5. Comparar antes y después</div>
+    </details><div className="advanced-section-title advanced-result-head">4. Resultado y comparación</div>
     <div className="advanced-upload-row">
       <button className="secondary" onClick={()=>resultRef.current?.click()} disabled={!photo}><Images size={15}/> Abrir resultado editado</button>
       <input ref={resultRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{load(e.target.files?.[0]??null,true);e.target.value='';}}/>
@@ -220,18 +269,29 @@ export function AdvancedEditor({initialImage}:{initialImage:SourcePhoto}){
      </div><label className="advanced-compare-range">Antes / después <input type="range" min="0" max="100" value={compare} onChange={e=>setCompare(Number(e.target.value))}/></label></>}
    </div>
    <div className="advanced-controls">
-    <div className="advanced-section-title">2. Tipo de edición</div>
+    <div className="advanced-section-title">2. Describe el cambio</div>
     <div className="advanced-goals">{GOALS.map(item=><button key={item.id} className={goal===item.id?'active':''} onClick={()=>onGoal(item.id)}><strong>{item.title}</strong><small>{item.description}</small></button>)}</div>
     <label className="advanced-textarea-label" htmlFor="advanced-instruction">Indica exactamente qué quieres cambiar</label>
     <textarea id="advanced-instruction" rows={4} value={instruction} placeholder="Ejemplo: cambiar la chaqueta por una de color azul sin modificar el rostro ni el fondo" onChange={e=>{setInstruction(e.target.value);setCopied(false)}}/>
-    <div className="advanced-section-title">3. Elementos que deben conservarse</div>
+    <div className="advanced-ai-start">
+     <label htmlFor="advanced-ai-quality">Modo de generación</label>
+     <select id="advanced-ai-quality" value={aiQuality} disabled={aiBusy} onChange={e=>setAiQuality(e.target.value as RemoteQuality)}>
+      <option value="speed">Rápido · 1024 px</option>
+      <option value="quality">Más detalle · 2048 px (más lento)</option>
+     </select>
+     <label className="advanced-ai-consent"><input type="checkbox" checked={allowUpload} onChange={e=>setAllowUpload(e.target.checked)}/> Acepto enviar esta foto y mi instrucción al servidor externo de Qwen/Hugging Face. No subiré fotos privadas o sensibles.</label>
+     <button className="primary advanced-ai-cta" disabled={!photo||!instruction.trim()||!allowUpload||aiBusy||applying} onClick={()=>{void applyAI()}}><SlidersHorizontal size={17}/>{aiBusy?'Generando con IA…':'3. Aplicar edición con IA'}</button>
+     <p className="advanced-footnote">La app recibe el resultado directamente. El motor tiene filtros de seguridad y puede estar saturado. La selección es local: el modelo no la usa durante la generación.</p>
+    </div>
+
+    <details className="advanced-extra"><summary>Opciones avanzadas: elementos a conservar e instrucciones completas</summary><div className="advanced-section-title">Elementos que deben conservarse</div>
     <div className="advanced-protections">{guards.map(([key,label])=><label key={key}><input type="checkbox" checked={preserve[key]} onChange={e=>{setPreserve(s=>({...s,[key]:e.target.checked}));setCopied(false);}}/><span>{label}</span></label>)}</div>
     <p className="advanced-footnote">Al elegir un cambio de postura o de ropa, se permite modificar ese elemento. Puedes ajustar las casillas manualmente. La preservación depende de la capacidad real del modelo.</p>
     <label className="advanced-textarea-label" htmlFor="advanced-prompt-preview">Instrucción preparada</label>
     <textarea id="advanced-prompt-preview" rows={8} readOnly value={prompt} onFocus={e=>e.currentTarget.select()}/>
     <button className="primary advanced-copy" disabled={!photo||(!instruction.trim()&&goal!=='restore')} onClick={copyPrompt}><Copy size={16}/>{copied?'Instrucciones copiadas':'Copiar instrucciones completas'}</button>
-    <div className="advanced-notice" role="status"><ShieldCheck size={16}/>{notice}</div>
-    <div className="advanced-next">
+    </details><div className="advanced-notice" role="status"><ShieldCheck size={16}/>{notice}</div>
+    <div className="advanced-next" hidden>
       <div className="advanced-section-title">Probar en un modelo externo</div>
       <p>Abre la demostración en otra pestaña y pega la instrucción. Si admite máscaras, sube la fotografía preparada y su máscara. Las imágenes que subas dejarán tu dispositivo.</p>
       <a href="https://huggingface.co/spaces/Qwen/Qwen-Image-2.1" target="_blank" rel="noopener noreferrer" className="secondary"><ExternalLink size={16}/> Abrir Qwen Image 2.1</a>

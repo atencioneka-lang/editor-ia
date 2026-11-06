@@ -108,3 +108,24 @@
 .local-effect-slider{display:flex;align-items:center;gap:12px;font-size:12px;color:#c4d0e6}.local-effect-slider input{flex:1}
 .advanced-upload-row a.secondary{font-size:12px;text-decoration:none;padding:10px 12px}
 @media(max-width:600px){.local-effects-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Alfa 1.1: interfaz sencilla y motor generativo experimental. */
+.advanced-editor{padding:18px;gap:13px}
+.advanced-heading h1{font-size:23px}
+.advanced-disclaimer{padding:10px;font-size:11px}
+.advanced-layout{grid-template-columns:minmax(280px,1.2fr) minmax(320px,1fr);gap:12px}
+.advanced-preview,.advanced-controls{padding:13px;gap:10px}
+.advanced-goals button{padding:9px}
+.advanced-goals small{font-size:9px}
+.advanced-ai-start{display:flex;flex-direction:column;gap:10px;border:1px solid #5368a4;background:#202d4a;padding:14px;border-radius:12px}
+.advanced-ai-start>label:first-child{font-weight:700;font-size:12px}
+.advanced-ai-start select{border:1px solid #526380;border-radius:8px;background:#293752;color:#e3edff;padding:10px}
+.advanced-ai-consent{display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.5;color:#dae3f4}
+.advanced-ai-consent input{margin-top:3px;flex-shrink:0;accent-color:#8c9dff}
+.advanced-ai-cta{width:100%;font-size:14px;padding:14px 10px}
+.advanced-extra{border:1px solid #36445e;border-radius:9px;padding:11px;background:#192235}
+.advanced-extra>summary{cursor:pointer;color:#becdf1;font-size:12px;font-weight:650}
+.advanced-extra[open]>summary{margin-bottom:15px}
+.advanced-next[hidden]{display:none}
+.advanced-result-head{margin-top:2px;padding-top:12px}
+@media(max-width:1100px){.advanced-layout{grid-template-columns:1fr}}

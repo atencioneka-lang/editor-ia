@@ -1,7 +1,7 @@
 {
   "name": "editor-ia",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -16,7 +16,8 @@
     "lucide-react": "^0.468.0",
     "upscaler": "1.0.0",
     "@tensorflow/tfjs": "4.11.0",
-    "@upscalerjs/esrgan-slim": "1.0.0"
+    "@upscalerjs/esrgan-slim": "1.0.0",
+    "@gradio/client": "2.7.2"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

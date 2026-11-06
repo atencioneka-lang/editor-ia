@@ -75,3 +75,8 @@ Nueva pestaña «Editor A+B+C»: importa fotografía local, pincel/eraser con m�
 
 ## Alfa 1.0 — aplicación de cambios locales dentro de Editor IA
 El editor A+B+C permite aplicar correcciones **reales, no generativas** directamente sobre la fotografía. Se usan Canvas2D y máscaras pintadas para limitar efectos de luz, contraste, saturación, suavizado, gris o tono cálido a una zona; también pueden aplicarse a la imagen completa. El resultado aparece en el comparador antes/después y puede descargarse sin salir de la app. El procesamiento se limita a 4 megapíxeles para evitar cargas excesivas, preservando el original. Esta función **no cambia ropa ni posturas mediante IA**; eso requiere un proveedor generativo real, cuyo despliegue y credenciales no están disponibles en esta fase.
+
+
+## Alfa 1.1: edición generativa experimental dentro de Editor IA
+
+La pantalla principal se simplificó para fotos, selección, instrucción y botón **Aplicar edición con IA**. Se añadió un cliente Gradio del Space oficial `Qwen/Qwen-Image-2.1`, con dos fases de API y filtros de seguridad del proveedor. El envío exige consentimiento explícito por cada sesión; no se suben fotos simplemente al abrir el editor. Se recibe un PNG y, cuando hay selección, el navegador combina el resultado conservando el original fuera de la máscara. Se puede comparar y descargar desde la app. El funcionamiento real depende de la disponibilidad externa; **las pruebas de GitHub validan código, no la calidad ni una generación real en GPU**. Sin garantía de uso gratuito ilimitado ni calidad idéntica a ChatGPT.
