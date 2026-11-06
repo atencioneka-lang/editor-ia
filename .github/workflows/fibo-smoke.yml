@@ -1,0 +1,25 @@
+name: FIBO alternative model live smoke
+
+on:
+  push:
+    paths:
+      - 'scripts/smoke-fibo.mjs'
+      - '.github/workflows/fibo-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fibo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test public 4-step image editor using synthetic image
+        run: node scripts/smoke-fibo.mjs
