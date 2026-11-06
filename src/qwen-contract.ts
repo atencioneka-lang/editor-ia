@@ -9,8 +9,10 @@ export function galleryPayload<T>(file:T):GalleryItem<T>[] {
 
 export type QwenStage='conexion'|'preparacion'|'generacion'|'descarga';
 export class QwenStageError extends Error {
- constructor(public readonly stage:QwenStage,detail:string) {
+ readonly stage:QwenStage;
+ constructor(stage:QwenStage,detail:string) {
   super(detail);
+  this.stage=stage;
   this.name='QwenStageError';
  }
 }
