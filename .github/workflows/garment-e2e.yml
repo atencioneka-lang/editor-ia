@@ -31,7 +31,7 @@ jobs:
           EDITOR_IA_DEPLOY: github-pages
       - name: Run browser with adult clothing photo and apply AI
         run: |
-          npm run preview -- --host 127.0.0.1 > /tmp/editor-preview.log 2>&1 &
+          EDITOR_IA_DEPLOY=github-pages npm run preview -- --host 127.0.0.1 > /tmp/editor-preview.log 2>&1 &
           PREVIEW_PID=$!
           trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do
