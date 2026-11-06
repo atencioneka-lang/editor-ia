@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
-import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ScanFace,ShieldCheck,Images,Info} from 'lucide-react';
+import {Brush,Download,Copy,ImagePlus,ExternalLink,Eraser,Trash2,ShieldCheck,Images,Info} from 'lucide-react';
 import {GOALS,defaultProtections,buildEditPrompt,type EditGoal,type Protections} from './edit-plan';
 
 type Photo={url:string;name:string;width:number;height:number;owned:boolean};
