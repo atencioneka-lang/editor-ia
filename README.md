@@ -67,3 +67,7 @@ Se añade una pestaña «IA gratis · Prueba» que incorpora como iframe la demo
 ## Alfa 0.8 — segunda ronda tras resultados de calidad insuficiente
 
 Se sustituyeron los demos rápidos de baja calidad visual por Qwen-Image 2.1 (Space oficial con 40 pasos y opciones 1024/2048), FLUX 3 Image Klein (Space oficial) y un Space comunitario alternativo de Qwen-Image 2.1. Los tres son proveedores externos con cuota/colas. Su interfaz se muestra embebida; las fotografías se cargan al proveedor elegido, y todavía no existe una integración programática con el editor. Se debe efectuar una comparación real con una imagen antes de afirmar mejora de calidad o velocidad.
+
+
+## Alfa 0.9 — Editor por zonas A+B+C
+Nueva pestaña «Editor A+B+C»: importa fotografía local, pincel/eraser con máscara visible, exporta copia de imagen y máscara PNG del mismo tamaño, genera un prompt adaptado al cambio de prenda/postura/fondo/restauración con casillas de preservación, y permite importar un resultado para compararlo con el original. El archivo fuente no se sobrescribe. Las dimensiones se ajustan a un máximo de 2560 px por lado / 7 MP para preparar la pareja imagen-máscara. La máscara exportada usa píxeles transparentes para la zona a modificar y blancos opacos para las zonas a conservar; los proveedores solo la usan si admiten máscaras compatibles. **No se afirma que los cambios generativos se ejecuten localmente:** deben realizarse mediante un servicio generativo compatible, y los proveedores conservan sus límites y políticas. 
