@@ -1,0 +1,56 @@
+
+name: Publicar Editor IA automaticamente
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: editor-ia-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Ejecutar pruebas
+        run: npm test
+
+      - name: Compilar aplicacion web
+        run: npm run build
+        env:
+          EDITOR_IA_DEPLOY: github-pages
+          VITE_DEPLOY_SHA: ${{ github.sha }}
+
+      - name: Crear manifiesto de actualizacion
+        run: node scripts/release.mjs
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
