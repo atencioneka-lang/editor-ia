@@ -57,3 +57,8 @@ Se han preparado el pipeline de publicación y el control de versiones. La compi
 ## Alfa 0.6 — honestidad de calidad y protección frente a esperas
 
 Las pruebas reales aportadas por el usuario mostraron que ESRGAN Slim casi no generaba mejora perceptible. Se desactiva la ejecución automática de este modelo en respuesta a instrucciones genéricas como «mejora la calidad». Se conserva únicamente bajo un apartado experimental y con confirmación previa para la ampliación completa. La integración de un motor generativo fotográfico de mayor calidad queda pendiente; el proyecto no debe afirmar que ya ofrece esa restauración ni prometer prestaciones o costes no verificados.
+
+
+## Alfa 0.7 — Laboratorio gratuito de edición generativa
+
+Se añade una pestaña «IA gratis · Prueba» que incorpora como iframe la demostración **Qwen-Image-Edit-2511-Fast** alojada en Hugging Face ZeroGPU. Permite probar un modelo externo de edición con el propio cargador y formulario del proveedor, sin instalar GPU local. Incluye enlace alternativo, instrucciones copiables y una advertencia explícita: las fotografías se transfieren a terceros cuando se suben en el iframe. Esta es una **prueba de integración visual**, no un API nativo. Puede tener cuotas, colas y límites; no existe promesa de rapidez ni gratuidad ilimitada. El usuario decidirá si el resultado cumple su estándar antes de integrarlo por API.
