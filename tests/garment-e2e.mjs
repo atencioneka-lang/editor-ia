@@ -41,9 +41,25 @@ try{
   'Replace the blue denim trousers with a knee-length navy pleated skirt. Keep the woman fully clothed. Preserve her face, upper clothing, pose, body proportions, photo composition and background. Make the skirt look naturally photographed.'
  );
  await page.locator('#advanced-ai-engine').selectOption('fibo');
+ // Paint the entire area originally covered by jeans, using the editor's actual
+ // pointer handlers (not an injected canvas bitmap).
+ const paintCanvas=page.locator('.advanced-photo-layer canvas');
+ await paintCanvas.scrollIntoViewIfNeeded();
+ const bounds=await paintCanvas.boundingBox();
+ if(!bounds)throw Error('The clothing mask canvas is not visible.');
+ for(let n=0;n<14;n++){
+  const x=bounds.x+bounds.width*(0.155+n*0.022);
+  await page.mouse.move(x,bounds.y+bounds.height*.505);
+  await page.mouse.down();
+  await page.mouse.move(x,bounds.y+bounds.height*.88,{steps:12});
+  await page.mouse.up();
+ }
+ const maskButton=page.locator('.advanced-export-row button').filter({hasText:'Descargar máscara PNG'});
+ if(await maskButton.isDisabled())throw Error('Painting never activated the actual editor selection state.');
+ console.log('E2E: manually painted and activated the garment region mask');
  await page.locator('.advanced-ai-consent input[type="checkbox"]').check();
  await page.screenshot({path:path.join(outputDir,'before-screen.png'),fullPage:true});
- console.log('E2E: clicking in-app Apply AI button with adult-clothing change');
+ console.log('E2E: clicking in-app Apply AI with painted jeans region');
  await page.locator('.advanced-ai-cta').click();
  const start=Date.now();
  try{
