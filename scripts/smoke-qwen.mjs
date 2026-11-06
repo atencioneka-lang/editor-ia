@@ -55,8 +55,21 @@ try{
  });
  const output=final.data?.[0];
  if(!output)throw Error('Generation returned no image');
- console.log('LIVE_SMOKE SUCCESS: generated image returned, type=',typeof output);
+ console.log('LIVE_SMOKE generated result keys:',typeof output==='object'?Object.keys(output):[]);
+ const source=typeof output==='string'?output:output.url||output.data||output.path;
+ if(typeof source!=='string'||!source.startsWith('https://'))throw Error('Output missing an HTTPS image URL');
+ const imageResponse=await fetch(source);
+ if(!imageResponse.ok)throw Error('Output download failed HTTP '+imageResponse.status);
+ const bytes=Buffer.from(await imageResponse.arrayBuffer());
+ if(bytes.length<100)throw Error('The output download is empty');
+ console.log('LIVE_SMOKE SUCCESS: generated image downloaded, bytes=',bytes.length,'mime=',imageResponse.headers.get('content-type'));
 }catch(err){
  console.error('LIVE_SMOKE FAILED:',err instanceof Error?err.message:String(err));
  process.exitCode=1;
-}finally{clearTimeout(expires)}
+}finally{
+ clearTimeout(expires);
+ // El cliente Gradio deja un heartbeat SSE abierto después de la petición.
+ // Terminar explícitamente el proceso tras comprobar el archivo.
+ await new Promise(resolve=>setTimeout(resolve,100));
+ process.exit(process.exitCode||0);
+}
